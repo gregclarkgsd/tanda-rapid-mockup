@@ -1,5 +1,31 @@
 # TANDA Rapid Mockup
 
-Rapid time-and-attendance product mockup coordinated by Hermes and built by Codex.
+Rapid clickable mockup for a time-and-attendance SaaS.
 
-Goal: management web GUI + simple staff mobile-style flow for projects, geo-fences, rotas, clock-ins, timesheets, rules, exceptions, and reporting.
+## What is included
+- Management command centre
+- Projects and geo-fence cards
+- Rota/scheduling grid
+- Staff directory/details
+- Timesheet approval queue
+- Rules and custom reporting mock
+- Simple mobile staff clock-in/out flow
+- Engineering loop document
+- Supabase draft schema
+- Deployment notes
+
+## Run locally
+```bash
+npm install
+npm run dev
+```
+
+Open the local URL printed by Vite.
+
+## Build
+```bash
+npm run build
+```
+
+## Current scope
+This is a fast front-end mockup with typed mock data. It is not yet a production backend, native app, payroll integration, or live Supabase deployment.
