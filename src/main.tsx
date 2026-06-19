@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { AlertTriangle, BellRing, CalendarDays, Camera, CheckCircle2, ChevronRight, Clock3, FileSpreadsheet, Filter, Fingerprint, LockKeyhole, MapPin, Menu, Radio, ShieldCheck, Smartphone, TabletSmartphone, UsersRound, WifiOff } from 'lucide-react'
 import { classifySample, summariseShift, type Geofence, type LocationSample } from './geo'
+import { buildAgentTasks, normaliseSkillTags, trainingExpiryStatus, type StaffProfile } from './staff'
 import './styles.css'
 
 type Tab = 'Command' | 'Live Tracking' | 'Projects' | 'Rota' | 'Staff' | 'Timesheets' | 'Rules' | 'Mobile'
@@ -43,6 +44,51 @@ const staff: Staff[] = [
   { id: 'jack', name: 'Jack Williams', role: 'Apprentice', project: 'Canary Wharf Fit-Out', status: 'Stale GPS', phone: '07700 900105', hours: 31.0, lastSeen: '18 min ago' },
   { id: 'sofia', name: 'Sofia Martins', role: 'Site Admin', project: 'Marylebone Hotel', status: 'Off shift', phone: '07700 900106', hours: 24.0, lastSeen: 'off shift' }
 ]
+
+const today = '2026-06-19'
+const staffProfiles: StaffProfile[] = [
+  {
+    id: 'aaron',
+    name: 'Aaron Patel',
+    role: 'Supervisor',
+    contact: { mobile: '07700 900101', email: 'aaron.patel@gsd.example', emergencyContactName: 'Priya Patel', emergencyContactPhone: '07700 900199', address: 'East London' },
+    employment: { payrollId: 'GSD-001', startDate: '2022-04-01', status: 'active' },
+    skills: ['SSSTS', 'Painter', 'First Aid', 'Key holder'],
+    training: [
+      { id: 'cscs-aaron', name: 'CSCS Card', certificateNo: 'CSCS-7788', expiresOn: '2026-06-29', status: 'verified' },
+      { id: 'asbestos-aaron', name: 'Asbestos Awareness', certificateNo: 'AA-9912', expiresOn: '2026-06-10', status: 'verified' },
+      { id: 'first-aid-aaron', name: 'First Aid', certificateNo: 'FA-2041', expiresOn: '2026-09-30', status: 'verified' },
+    ],
+    notes: [{ id: 'note-aaron-1', at: '2026-06-01T10:00:00Z', author: 'Nina Brooks', body: 'Strong supervisor for live geofence exception reviews.', visibility: 'manager' }],
+  },
+  {
+    id: 'mia',
+    name: 'Mia O’Connor',
+    role: 'Painter',
+    contact: { mobile: '07700 900102', email: 'mia.oconnor@gsd.example', emergencyContactName: 'Sean O’Connor', emergencyContactPhone: '07700 900198' },
+    employment: { payrollId: 'GSD-014', startDate: '2024-02-12', status: 'active' },
+    skills: ['Painter', 'Sprayer', 'MEWP'],
+    training: [
+      { id: 'cscs-mia', name: 'CSCS Card', certificateNo: 'CSCS-3341', expiresOn: '2026-07-15', status: 'verified' },
+      { id: 'mewp-mia', name: 'MEWP/IPAF', certificateNo: 'IPAF-1299', expiresOn: '2026-06-23', status: 'verified' },
+    ],
+    notes: [{ id: 'note-mia-1', at: '2026-05-20T09:15:00Z', author: 'Aaron Patel', body: 'Available for weekend snagging if rota published early.', visibility: 'manager' }],
+  },
+  {
+    id: 'lewis',
+    name: 'Lewis Grant',
+    role: 'Dryliner',
+    contact: { mobile: '07700 900103', email: 'lewis.grant@gsd.example', emergencyContactName: 'Hannah Grant', emergencyContactPhone: '07700 900197' },
+    employment: { payrollId: 'GSD-028', startDate: '2023-09-04', status: 'active' },
+    skills: ['Drylining', 'Fire stopping', 'Supervisor cover'],
+    training: [
+      { id: 'cscs-lewis', name: 'CSCS Card', certificateNo: 'CSCS-4418', expiresOn: '2027-01-10', status: 'verified' },
+      { id: 'fire-lewis', name: 'Fire Stopping', status: 'missing' },
+    ],
+    notes: [{ id: 'note-lewis-1', at: '2026-06-18T14:20:00Z', author: 'System', body: 'Leave-zone event requires manager decision before payroll lock.', visibility: 'agent' }],
+  },
+]
+const agentStaffTasks = buildAgentTasks(staffProfiles, today)
 
 const activeFence = projects[0]
 const locationSamples: LocationSample[] = [
@@ -176,12 +222,52 @@ function Rota() {
 }
 
 function StaffDirectory() {
-  return <Card><div className="section-head"><div><p className="eyebrow">Staff reporting and details</p><h2>124 people · 6 shown</h2></div><div className="toolbar"><button className="secondary"><Filter size={16}/> Filter</button><button>Add staff</button></div></div>
-    <div className="table">{staff.map(s => <div className="table-row" key={s.name}>
-      <div className="avatar">{s.name.split(' ').map(x=>x[0]).join('')}</div><div><b>{s.name}</b><span>{s.role} · {s.phone} · last seen {s.lastSeen}</span></div><div>{s.project}</div><div>{s.hours}h this week</div><Pill tone={s.status==='Clocked in'?'good':s.status==='Late'||s.status==='Stale GPS'?'warn':s.status==='Outside fence'?'bad':'neutral'}>{s.status}</Pill>
-    </div>)}</div>
-    <div className="detail-panel"><p className="eyebrow">Access settings parity</p><h2>Aaron Patel</h2><div className="detail-grid"><div><b>Mobile clock-in</b><span>Allowed · GPS required · job required</span></div><div><b>Proof options</b><span>Selfie optional now; face match future toggle</span></div><div><b>Approver role</b><span>Supervisor can approve level-one site exceptions</span></div><div><b>Privacy</b><span>Location monitoring only while clocked in / scheduled</span></div></div></div>
-  </Card>
+  const selected = staffProfiles[0]
+  const trainingWatchCount = staffProfiles.reduce((count, profile) => count + profile.training.filter((cert) => trainingExpiryStatus(cert, today).reminderLevel !== 'none').length, 0)
+  return <div className="grid two">
+    <Card className="wide"><div className="section-head"><div><p className="eyebrow">Staff database</p><h2>124 people · contacts, certs, skills, notes</h2></div><div className="toolbar"><button className="secondary"><Filter size={16}/> Filter</button><button>Add staff</button></div></div>
+      <div className="detail-grid">
+        <div><b>Contact records</b><span>Mobile, email, emergency contact, address and payroll ID.</span></div>
+        <div><b>Training reminders</b><span>{trainingWatchCount} certificate issues for agents/managers to chase.</span></div>
+        <div><b>Editable skill tags</b><span>Trade, competencies, supervisor cover and project suitability.</span></div>
+        <div><b>Agent-ready notes</b><span>Structured notes with visibility for manager, payroll or automation.</span></div>
+      </div>
+      <div className="table">{staffProfiles.map(profile => {
+        const live = staff.find((person) => person.id === profile.id)
+        const certWarnings = profile.training.filter((cert) => trainingExpiryStatus(cert, today).reminderLevel !== 'none')
+        return <div className="table-row" key={profile.name}>
+          <div className="avatar">{profile.name.split(' ').map(x=>x[0]).join('')}</div>
+          <div><b>{profile.name}</b><span>{profile.role} · {profile.contact.mobile} · {profile.contact.email}</span></div>
+          <div>{profile.employment.payrollId}</div>
+          <div>{normaliseSkillTags(profile.skills).slice(0, 3).join(' · ')}</div>
+          <Pill tone={certWarnings.some((cert) => trainingExpiryStatus(cert, today).reminderLevel === 'blocked') ? 'bad' : certWarnings.length ? 'warn' : 'good'}>{certWarnings.length ? `${certWarnings.length} cert action` : 'Certs clear'}</Pill>
+          <Pill tone={live?.status==='Clocked in'?'good':live?.status==='Outside fence'?'bad':'neutral'}>{live?.status ?? 'No shift'}</Pill>
+        </div>
+      })}</div>
+    </Card>
+    <Card>
+      <p className="eyebrow">Profile detail</p><h2>{selected.name}</h2>
+      <div className="policy-list">
+        <div><b>Contact</b><span>{selected.contact.mobile} · {selected.contact.email}</span></div>
+        <div><b>Emergency</b><span>{selected.contact.emergencyContactName} · {selected.contact.emergencyContactPhone}</span></div>
+        <div><b>Payroll</b><span>{selected.employment.payrollId} · started {selected.employment.startDate}</span></div>
+        <div><b>Notes</b><span>{selected.notes[0].body}</span></div>
+      </div>
+      <div className="tag-cloud">{normaliseSkillTags(selected.skills).map((skill) => <Pill key={skill}>{skill}</Pill>)}<button className="secondary">Edit tags</button></div>
+    </Card>
+    <Card>
+      <div className="section-head"><div><p className="eyebrow">Training certificates</p><h2>Expiry and reminders</h2></div><Pill tone="warn"><BellRing size={12}/> Agent queue</Pill></div>
+      <div className="policy-list">{selected.training.map((cert) => {
+        const status = trainingExpiryStatus(cert, today)
+        return <div key={cert.id}><b>{cert.name}</b><span>{cert.certificateNo ?? 'No certificate uploaded'} · {cert.expiresOn ?? 'missing expiry'} · {status.state.replace('_', ' ')}</span><Pill tone={status.reminderLevel === 'blocked' ? 'bad' : status.reminderLevel === 'none' ? 'good' : 'warn'}>{status.daysRemaining === null ? 'Missing' : `${status.daysRemaining} days`}</Pill></div>
+      })}</div>
+    </Card>
+    <Card className="wide">
+      <div className="section-head"><div><p className="eyebrow">Future agent operator lane</p><h2>Tasks agents can run safely</h2></div><Pill tone="good"><ShieldCheck size={12}/> Human approval before writes</Pill></div>
+      <div className="timesheet-list">{agentStaffTasks.map((task) => <div className="timesheet" key={task.id}><div><b>{task.staffName} · {task.certificateName}</b><span>{task.instruction}</span></div><Pill tone={task.priority === 'blocker' ? 'bad' : task.priority === 'high' ? 'warn' : 'neutral'}>{task.priority}</Pill><button className="secondary">Draft reminder</button></div>)}</div>
+      <div className="saved"><b>Agent rule</b><span>Agents may detect expiry, draft reminders, and prepare rota blocks. They do not send messages, alter payroll, or remove a worker from a live project without manager approval.</span></div>
+    </Card>
+  </div>
 }
 
 function Timesheets() {
